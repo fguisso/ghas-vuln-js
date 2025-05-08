@@ -4,7 +4,7 @@ const { exec } = require("child_process");
 const _ = require("lodash"); // Dependabot trigger
 
 // 🚨 Simulação de segredo
-const GITHUB_PAT = "ghp_exampleToken1234567890FakeTokenToTriggerScan";
+const GITHUB_PAT = "<meu_token>";
 
 // Função para obter o clone_url do primeiro repositório
 function getRepoUrl(user, cb) {
