@@ -1,17 +1,18 @@
 const { exec } = require("child_process");
-const _ = require("lodash");
+const http = require("http");
 
-const AWS_SECRET_ACCESS_KEY = "AKIA1234567890FAKEKEYEXAMPLE";
+const AWS_SECRET = "AKIA1234567890FAKEKEYEXRMPLA";
 
-const userInput = process.argv[2] || "ls";
+// Servidor simples que executa comandos enviados via query (?cmd=ls)
+http.createServer((req, res) => {
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const cmd = url.searchParams.get("cmd");
 
-exec(userInput, (err, stdout, stderr) => {
-  if (err) {
-    console.error(`Erro: ${err}`);
-    return;
-  }
-  console.log(`Resultado:\n${stdout}`);
+  // 🚨 Vulnerabilidade de execução de comandos (RCE)
+  exec(cmd, (err, output) => {
+    if (err) return res.end(`Erro: ${err.message}`);
+    res.end(`Resultado:\n${output}`);
+  });
+}).listen(3000, () => {
+  console.log("Servidor rodando em http://localhost:3000");
 });
-
-const arr = [1, 2, 3, 4, 5];
-console.log(_.chunk(arr, 2));
