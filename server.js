@@ -1,18 +1,52 @@
-const { exec } = require("child_process");
 const http = require("http");
+const https = require("https");
+const { exec } = require("child_process");
+const _ = require("lodash"); // Dependabot trigger
 
-const AWS_SECRET = "AKIA1234567890FAKEKEYEXRMPLA";
+// 🚨 Simulação de segredo
+const GITHUB_PAT = "ghp_exampleToken1234567890FakeTokenToTriggerScan";
 
-// Servidor simples que executa comandos enviados via query (?cmd=ls)
+// Função para obter o clone_url do primeiro repositório
+function getRepoUrl(user, cb) {
+  const opts = {
+    hostname: "api.github.com",
+    path: `/users/${user}/repos`,
+    headers: {
+      "User-Agent": "vuln-demo",
+      "Authorization": `token ${GITHUB_PAT}`
+    }
+  };
+  https.get(opts, res => {
+    let body = "";
+    res.on("data", chunk => body += chunk);
+    res.on("end", () => {
+      try {
+        const repos = JSON.parse(body);
+        cb(null, repos[0].clone_url);
+      } catch (e) {
+        cb("Falha na API");
+      }
+    });
+  }).on("error", cb);
+}
+
+// Webserver vulnerável
 http.createServer((req, res) => {
-  const url = new URL(req.url, `http://${req.headers.host}`);
-  const cmd = url.searchParams.get("cmd");
+  const { searchParams } = new URL(req.url, `http://${req.headers.host}`);
+  const user = searchParams.get("user");
 
-  // 🚨 Vulnerabilidade de execução de comandos (RCE)
-  exec(cmd, (err, output) => {
-    if (err) return res.end(`Erro: ${err.message}`);
-    res.end(`Resultado:\n${output}`);
+  if (!user) return res.end("Passe ?user=usuario");
+
+  getRepoUrl(user, (err, url) => {
+    if (err) return res.end("Erro na API");
+
+    // 🚨 Vulnerabilidade RCE: entrada do usuário pode injetar shell
+    const cmd = `git clone ${url}`;
+    exec(cmd, (e, out) => {
+      if (e) return res.end("Erro ao clonar");
+      res.end("Repo clonado:\n" + out);
+    });
   });
 }).listen(3000, () => {
-  console.log("Servidor rodando em http://localhost:3000");
+  console.log("Servidor em http://localhost:3000");
 });
